@@ -71,10 +71,8 @@ public class FilesSyncJob extends Job {
 
     @NonNull
     @Override
-    protected Result onRunJob(Params params) {
+    protected Result onRunJob(@NonNull Params params) {
         final Context context = MainApp.getAppContext();
-        final ContentResolver contentResolver = context.getContentResolver();
-        FileUploader.UploadRequester requester = new FileUploader.UploadRequester();
         PowerManager.WakeLock wakeLock = null;
 
         if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
@@ -84,7 +82,6 @@ public class FilesSyncJob extends Job {
         }
 
         PersistableBundleCompat bundle = params.getExtras();
-        final boolean skipCustom = bundle.getBoolean(SKIP_CUSTOM, false);
         final boolean overridePowerSaving = bundle.getBoolean(OVERRIDE_POWER_SAVING, false);
 
         // If we are in power save mode, better to postpone upload
@@ -93,19 +90,24 @@ public class FilesSyncJob extends Job {
             return Result.SUCCESS;
         }
 
+
         Resources resources = MainApp.getAppContext().getResources();
         boolean lightVersion = resources.getBoolean(R.bool.syncedFolder_light);
 
+        final boolean skipCustom = bundle.getBoolean(SKIP_CUSTOM, false);
         FilesSyncHelper.restartJobsIfNeeded();
         FilesSyncHelper.insertAllDBEntries(skipCustom);
 
         // Create all the providers we'll need
+        final ContentResolver contentResolver = context.getContentResolver();
         final FilesystemDataProvider filesystemDataProvider = new FilesystemDataProvider(contentResolver);
         SyncedFolderProvider syncedFolderProvider = new SyncedFolderProvider(contentResolver);
 
         Locale currentLocale = context.getResources().getConfiguration().locale;
         SimpleDateFormat sFormatter = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss", currentLocale);
         sFormatter.setTimeZone(TimeZone.getTimeZone(TimeZone.getDefault().getID()));
+
+        FileUploader.UploadRequester requester = new FileUploader.UploadRequester();
 
         for (SyncedFolder syncedFolder : syncedFolderProvider.getSyncedFolders()) {
             if ((syncedFolder.isEnabled()) && (!skipCustom || MediaFolderType.CUSTOM != syncedFolder.getType())) {
